@@ -4488,14 +4488,15 @@ void Unit::RemoveAurasDueToSpellByCancel(uint32 spellId)
     }	
 }
 
-void Unit::RemoveAurasDueToSameApplyAura(uint32 AuraName, uint32 MiscValue)
+void Unit::RemoveAurasDueToSameApplyAura(uint32 AuraName, uint32 MiscValue, uint32 BasePoint)
 {
     for(int8 i = 0; i < MAX_EFFECT_INDEX; i++)
     {
         for (AuraMap::iterator iter = m_Auras.begin(); iter != m_Auras.end(); )
         {
             if (iter->second->GetAuraName(i) == AuraName || iter->second->GetMiscValue() == MiscValue)
-                RemoveAura(iter, AURA_REMOVE_BY_CANCEL);
+                if(BasePoint >= iter->second->GetBasePoints() && iter->second->GetAuraMaxDuration() > 0)
+                    RemoveAura(iter, AURA_REMOVE_BY_CANCEL);
             else
                 ++iter;
         }
