@@ -235,6 +235,7 @@ class MANGOS_DLL_SPEC Aura
 
         SpellEntry const* GetSpellProto() const { return m_spellProto; }
         uint32 GetId() const{ return m_spellProto->Id; }
+        uint32 GetAuraName(int8 eff_index) const{ return m_spellProto->EffectApplyAuraName[eff_index]; }
         uint64 GetCastItemGUID() const { return m_castItemGuid; }
         SpellEffectIndex GetEffIndex() const{ return m_effIndex; }
         int32 GetBasePoints() const { return m_currentBasePoints; }

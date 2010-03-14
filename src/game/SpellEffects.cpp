@@ -2956,6 +2956,8 @@ void Spell::EffectApplyAura(SpellEffectIndex eff_idx)
         else
             return;
     }
+    for(int8 i = 0; i < MAX_EFFECT_INDEX; i++)
+        unitTarget->RemoveAurasDueToSameApplyAura(m_spellInfo->EffectApplyAuraName[i], m_spellInfo->EffectMiscValue[i]);
 
     sLog.outDebug("Spell: Aura is: %u", m_spellInfo->EffectApplyAuraName[eff_idx]);
 
