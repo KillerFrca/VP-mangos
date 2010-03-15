@@ -1421,6 +1421,15 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
                 case 25991:                                 // Poison Bolt Volley (Pincess Huhuran)
                     unMaxTargets = 15;
                     break;
+                case 62240:                                 // Solar Flare
+                case 62920:                                 // Solar Flare (h)
+                {
+                    if(!m_caster)
+                        return;					
+                    if(Aura *pAura = m_caster->GetAura(62251, EFFECT_INDEX_0))
+                        unMaxTargets = pAura->GetStackAmount();
+                    else unMaxTargets = 1;
+                }
             }
             break;
         case SPELLFAMILY_PRIEST:
@@ -1453,7 +1462,7 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
         }
         default:
             break;
-	}
+    }
 
     Unit::AuraList const& mod = m_caster->GetAurasByType(SPELL_AURA_MOD_MAX_AFFECTED_TARGETS);
     for(Unit::AuraList::const_iterator m = mod.begin(); m != mod.end(); ++m)
@@ -2811,15 +2820,15 @@ void Spell::cast(bool skipCheck)
            aoeAttack = true;
         
        if( aoeAttack )
-	   {
-		   if(m_UniqueTargetInfo.size() > 1)
-		   {
-			   tbb::concurrent_vector<TargetInfo>::iterator itr = m_UniqueTargetInfo.begin();
-			   TargetInfo tInfo = (*itr);
-			   m_UniqueTargetInfo.clear();
-			   m_UniqueTargetInfo.push_back(tInfo);
-		   }
-	   }
+       {
+           if(m_UniqueTargetInfo.size() > 1)
+           {
+               tbb::concurrent_vector<TargetInfo>::iterator itr = m_UniqueTargetInfo.begin();
+               TargetInfo tInfo = (*itr);
+               m_UniqueTargetInfo.clear();
+               m_UniqueTargetInfo.push_back(tInfo);
+           }
+       }
    }
 
     if(m_spellState == SPELL_STATE_FINISHED)                // stop cast if spell marked as finish somewhere in FillTargetMap
@@ -3242,7 +3251,7 @@ void Spell::finish(bool ok)
         m_caster->resetAttackTimer(RANGED_ATTACK);*/
 
     // Clear combo at finish state
-	if((m_caster->GetTypeId() == TYPEID_PLAYER || ((Creature*)m_caster)->isVehicle())&& NeedsComboPoints(m_spellInfo))
+    if((m_caster->GetTypeId() == TYPEID_PLAYER || ((Creature*)m_caster)->isVehicle())&& NeedsComboPoints(m_spellInfo))
     {
         // Not drop combopoints if negative spell and if any miss on enemy exist
         bool needDrop = true;
