@@ -5889,6 +5889,13 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                         m_caster->CastSpell(m_caster, 62687, true);
                     return;
                 }
+                case 62217:
+                case 62922:                                 // Unstable Energy - Unstable Sun Beam remove part
+                {
+                    if(m_caster)
+                        m_caster->RemoveAurasDueToSpell(m_spellInfo->EffectBasePoints[eff_id] + 1);
+                    return;
+                }
             }
             break;
         }
