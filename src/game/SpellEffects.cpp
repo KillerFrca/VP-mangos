@@ -2956,17 +2956,6 @@ void Spell::EffectApplyAura(SpellEffectIndex eff_idx)
         else
             return;
     }
-    /*for(int8 i = 0; i < MAX_EFFECT_INDEX; i++)
-        if(m_spellInfo->EffectBasePoints[i] > 0 && (m_spellInfo->EffectApplyAuraName[i] == 29 || m_spellInfo->EffectApplyAuraName[i] == 137 || m_spellInfo->EffectApplyAuraName[i] == 166 ||
-            m_spellInfo->EffectApplyAuraName[i] == 85))
-            unitTarget->RemoveAurasDueToSameApplyAura(m_spellInfo->EffectApplyAuraName[i], m_spellInfo->EffectMiscValue[i], m_spellInfo->EffectBasePoints[i]);*/
-    //BOK
-    if(m_spellInfo->Id == 25898 || m_spellInfo->Id == 20217 || m_spellInfo->Id == 72586)
-    {
-        unitTarget->RemoveAurasDueToSpell(25898);
-        unitTarget->RemoveAurasDueToSpell(20217);
-        unitTarget->RemoveAurasDueToSpell(72586);
-    }
 
     sLog.outDebug("Spell: Aura is: %u", m_spellInfo->EffectApplyAuraName[eff_idx]);
 
