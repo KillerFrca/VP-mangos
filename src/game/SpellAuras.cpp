@@ -342,7 +342,7 @@ pAuraHandler AuraHandler[TOTAL_AURAS]=
     &Aura::HandleUnused,                                    //289 unused (3.2.2a)
     &Aura::HandleAuraModAllCritChance,                      //290 SPELL_AURA_MOD_ALL_CRIT_CHANCE
     &Aura::HandleNoImmediateEffect,                         //291 SPELL_AURA_MOD_QUEST_XP_PCT           implemented in Player::GiveXP
-    &Aura::HandleNULL,                                      //292 call stabled pet
+    &Aura::HandleAuraOpenStable,                            //292 call stabled pet
     &Aura::HandleNULL,                                      //293 3 spells
     &Aura::HandleNULL,                                      //294 2 spells, possible prevent mana regen
     &Aura::HandleUnused,                                    //295 unused (3.2.2a)
@@ -1181,7 +1181,7 @@ bool Aura::_RemoveAura()
         if(m_spellProto->Dispel == DISPEL_ENRAGE)
             m_target->ModifyAuraState(AURA_STATE_ENRAGE, false);
 
-		// Mechanic bleed aura state
+        // Mechanic bleed aura state
         if(GetAllSpellMechanicMask(m_spellProto) & (1 << (MECHANIC_BLEED-1)))
         {
             bool found = false;
@@ -1196,7 +1196,7 @@ bool Aura::_RemoveAura()
             }
             if(!found)
                 m_target->ModifyAuraState(AURA_STATE_MECHANIC_BLEED, false);
-		}
+        }
 
         uint32 removeState = 0;
         uint64 removeFamilyFlag = m_spellProto->SpellFamilyFlags;
@@ -1323,10 +1323,7 @@ void Aura::SendAuraUpdate(bool remove)
 
     if(!(auraFlags & AFLAG_NOT_CASTER))
     {
-        if(GetCaster())
-            data << GetCaster()->GetPackGUID();
-        else
-            data << uint8(0);
+        data.appendPackGUID(GetCasterGUID());
     }
 
     if(auraFlags & AFLAG_DURATION)
@@ -2691,15 +2688,18 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
 
             return;
         }
-
-        if (m_removeMode == AURA_REMOVE_BY_DEATH)
+        // Arcane Missiles
+        if (m_spellProto->SpellFamilyName == SPELLFAMILY_MAGE && (m_spellProto->SpellFamilyFlags & UI64LIT(0x0000000000000800)))
         {
-            // Stop caster Arcane Missle chanelling on death
-            if (m_spellProto->SpellFamilyName == SPELLFAMILY_MAGE && (m_spellProto->SpellFamilyFlags & UI64LIT(0x0000000000000800)))
+            //Remove arcane blast
+            if (Unit* caster = GetCaster())
+                caster->RemoveAurasDueToSpell(36032);
+
+            //Stop channeling at death
+            if (m_removeMode == AURA_REMOVE_BY_DEATH)
             {
                 if (Unit* caster = GetCaster())
                     caster->InterruptSpell(CURRENT_CHANNELED_SPELL);
-
                 return;
             }
         }
@@ -2881,7 +2881,7 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
                         m_target->m_AuraFlags |= ~UNIT_AURAFLAG_ALIVE_INVISIBLE;
                     return;
                 case 71342: //Big Love Rocket - there is no spell for mount speeds
-                    if(m_target->GetTypeId() != TYPEID_PLAYER || !Real)
+                    if(m_target->GetTypeId() != TYPEID_PLAYER)
                         return;
 
                     uint32 skill = ((Player*)m_target)->GetSkillValue(762);
@@ -2904,7 +2904,7 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
                         if(skill == 225 && apply)
                             m_target->SetSpeedRate(MOVE_FLIGHT, 1.5f, true);
                         else if(skill == 300 && apply)
-                            m_target->SetSpeedRate(MOVE_FLIGHT, 2.8f, true);
+                            m_target->SetSpeedRate(MOVE_FLIGHT, 3.1f, true);
                         else if(!apply)
                             m_target->SetSpeedRate(MOVE_FLIGHT, 1.0f, true);
                     }
@@ -4288,8 +4288,10 @@ void Aura::HandleModStealth(bool apply, bool Real)
 {
     if (apply)
     {
+        // stop being attacked and interrupt casts
+        m_target->CombatStop();
         // drop flag at stealth in bg
-         m_target->RemoveAurasWithInterruptFlags(AURA_INTERRUPT_FLAG_IMMUNE_OR_LOST_SELECTION);
+        m_target->RemoveAurasWithInterruptFlags(AURA_INTERRUPT_FLAG_IMMUNE_OR_LOST_SELECTION);
 
         // only at real aura add
         if (Real)
@@ -6483,6 +6485,7 @@ void Aura::HandleSpellSpecificBoosts(bool apply, bool last_stack)
                 }
                 else
                     return;
+                break;
             }
 
             switch(GetId())
@@ -6640,6 +6643,7 @@ void Aura::HandleSpellSpecificBoosts(bool apply, bool last_stack)
                 }
                 else
                     return;
+                break;
             }
             // Power Word: Shield
             else if (apply && m_spellProto->SpellFamilyFlags & UI64LIT(0x0000000000000001) && m_spellProto->Mechanic == MECHANIC_SHIELD)
@@ -7247,7 +7251,7 @@ void Aura::HandleSchoolAbsorb(bool apply, bool Real)
                         //Borrowed Time
                         Unit::AuraList const& borrowedTime = caster->GetAurasByType(SPELL_AURA_DUMMY);
                         for(Unit::AuraList::const_iterator itr = borrowedTime.begin(); itr != borrowedTime.end(); ++itr)
-					    {
+                        {
                             SpellEntry const* i_spell = (*itr)->GetSpellProto();
                             if(i_spell->SpellFamilyName==SPELLFAMILY_PRIEST && i_spell->SpellIconID == 2899 && i_spell->EffectMiscValue[(*itr)->GetEffIndex()] == 24)
                             {
@@ -8807,6 +8811,21 @@ void Aura::HandleAuraCloneCaster(bool Apply, bool Real)
     m_target->SetDisplayId(caster->GetDisplayId());
     m_target->SetUInt32Value(UNIT_FIELD_FLAGS_2, 2064);
 }
+
+void Aura::HandleAuraOpenStable(bool apply, bool Real)
+{
+    if(!apply || !Real)
+        return;
+
+    Unit* caster = GetCaster();    
+
+    if(!caster || caster->GetTypeId() != TYPEID_PLAYER)
+        return;
+
+    WorldPacket data;
+    data << uint64(caster->GetGUID());
+    ((Player*)caster)->GetSession()->HandleListStabledPetsOpcode(data);
+} 
 
 void Aura::ApplyHasteToPeriodic()
 {

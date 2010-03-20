@@ -1053,6 +1053,14 @@ void Spell::DoAllEffectOnTarget(TargetInfo *target)
         if (m_canTrigger && missInfo != SPELL_MISS_REFLECT)
             caster->ProcDamageAndSpell(unit, real_caster ? procAttacker : PROC_FLAG_NONE, procVictim, procEx, 0, m_attackType, m_spellInfo);
     }
+    // remove Arcane Blast buffs at any non-Arcane Blast arcane damage spell.
+    // NOTE: it removed at hit instead cast because currently spell done-damage calculated at hit instead cast
+    // For arcane missiles its removed in Aura::HandleAuraDummy();
+    if ((m_spellInfo->SchoolMask & SPELL_SCHOOL_MASK_ARCANE) && !(m_spellInfo->SpellFamilyFlags & UI64LIT(0x20000000))
+        && !m_IsTriggeredSpell && !IsChanneledSpell(m_spellInfo))
+    {
+        m_caster->RemoveAurasDueToSpell(36032); // Arcane Blast buff
+    }
 
     // Call scripted function for AI if this spell is casted upon a creature
     if (unit->GetTypeId() == TYPEID_UNIT)
@@ -3405,8 +3413,8 @@ void Spell::SendSpellStart()
 
     if ( castFlags & CAST_FLAG_UNKNOWN7 )                   // rune cooldowns list
     {
-        uint8 v1 = 0;//m_runesState;
-        uint8 v2 = 0;//((Player*)m_caster)->GetRunesState();
+        uint8 v1 = m_runesState;
+        uint8 v2 = ((Player*)m_caster)->GetRunesState();
         data << uint8(v1);                                  // runes state before
         data << uint8(v2);                                  // runes state after
         for(uint8 i = 0; i < MAX_RUNES; ++i)
@@ -3428,8 +3436,6 @@ void Spell::SendSpellStart()
     }
 
     m_caster->SendMessageToSet(&data, true);
-    if(m_caster->getClass() == CLASS_DEATH_KNIGHT)
-        ((Player*)m_caster)->ResyncRunes(MAX_RUNES);
 }
 
 void Spell::SendSpellGo()
@@ -3491,8 +3497,8 @@ void Spell::SendSpellGo()
 
     if ( castFlags & CAST_FLAG_UNKNOWN7 )                   // rune cooldowns list
     {
-        uint8 v1 = 0; //m_runesState;
-        uint8 v2 = 0; //m_caster->getClass() == CLASS_DEATH_KNIGHT ? ((Player*)m_caster)->GetRunesState() : 0;
+        uint8 v1 = m_runesState;
+        uint8 v2 = m_caster->getClass() == CLASS_DEATH_KNIGHT ? ((Player*)m_caster)->GetRunesState() : 0;
         data << uint8(v1);                                  // runes state before
         data << uint8(v2);                                  // runes state after
         for(uint8 i = 0; i < MAX_RUNES; ++i)
@@ -3525,8 +3531,6 @@ void Spell::SendSpellGo()
     }
 
     m_caster->SendMessageToSet(&data, true);
-    if(m_caster->getClass() == CLASS_DEATH_KNIGHT)
-        ((Player*)m_caster)->ResyncRunes(MAX_RUNES);
 }
 
 void Spell::WriteAmmoToPacket( WorldPacket * data )

@@ -382,12 +382,6 @@ void Spell::EffectSchoolDMG(SpellEffectIndex effect_idx)
                 }
                 break;
             }
-            case SPELLFAMILY_MAGE:
-                // remove Arcane Blast buffs at any non-Arcane Blast arcane damage spell.
-                // NOTE: it removed at hit instead cast because currently spell done-damage calculated at hit instead cast
-                if ((m_spellInfo->SchoolMask & SPELL_SCHOOL_MASK_ARCANE) && !(m_spellInfo->SpellFamilyFlags & UI64LIT(0x20000000)))
-                    m_caster->RemoveAurasDueToSpell(36032); // Arcane Blast buff
-                break;
             case SPELLFAMILY_WARRIOR:
             {
                 // Bloodthirst
@@ -3970,6 +3964,7 @@ void Spell::DoSummon(SpellEffectIndex eff_idx)
         m_caster->GetClosePoint(x, y, z, spawnCreature->GetObjectSize());
 
     spawnCreature->Relocate(x, y, z, -m_caster->GetOrientation());
+    spawnCreature->SetSummonPoint(x, y, z, -m_caster->GetOrientation());
 
     if (!spawnCreature->IsPositionValid())
     {
@@ -4387,6 +4382,7 @@ void Spell::DoSummonGuardian(SpellEffectIndex eff_idx, uint32 forceFaction)
             m_caster->GetClosePoint(px, py, pz,spawnCreature->GetObjectSize());
 
         spawnCreature->Relocate(px, py, pz, m_caster->GetOrientation());
+        spawnCreature->SetSummonPoint(px, py, pz, m_caster->GetOrientation());
 
         if (!spawnCreature->IsPositionValid())
         {
@@ -6554,6 +6550,7 @@ void Spell::DoSummonTotem(SpellEffectIndex eff_idx, uint8 slot_dbc)
         z = m_caster->GetPositionZ();
 
     pTotem->Relocate(x, y, z, m_caster->GetOrientation());
+    pTotem->SetSummonPoint(x, y, z, m_caster->GetOrientation());
 
     if (slot < MAX_TOTEM_SLOT)
         m_caster->_AddTotem(TotemSlot(slot),pTotem);
@@ -7113,6 +7110,7 @@ void Spell::DoSummonCritter(SpellEffectIndex eff_idx, uint32 forceFaction)
          m_caster->GetClosePoint(x, y, z, critter->GetObjectSize());
 
     critter->Relocate(x, y, z, m_caster->GetOrientation());
+    critter->SetSummonPoint(x, y, z, m_caster->GetOrientation());
 
     if(!critter->IsPositionValid())
     {
