@@ -1050,7 +1050,7 @@ void Aura::_AddAura()
         if(slot < MAX_AURAS)                        // slot found send data to client
         {
             SetAura(false);
-            SetAuraFlags((1 << GetEffIndex()) | ((caster && caster != m_target) ? AFLAG_NONE : AFLAG_NOT_CASTER) | ((GetAuraMaxDuration() > 0) ? AFLAG_DURATION : AFLAG_NONE) | (IsPositive() ? AFLAG_POSITIVE : AFLAG_NEGATIVE));
+            SetAuraFlags((1 << GetEffIndex()) | ((GetCasterGUID() == GetTarget()->GetGUID()) ? AFLAG_NOT_CASTER : AFLAG_NONE) | ((GetAuraMaxDuration() > 0) ? AFLAG_DURATION : AFLAG_NONE) | (IsPositive() ? AFLAG_POSITIVE : AFLAG_NEGATIVE));
             SetAuraLevel(caster ? caster->getLevel() : sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL));
             SendAuraUpdate(false);
         }
@@ -4710,6 +4710,7 @@ void Aura::HandleAuraModDecreaseSpeed(bool apply, bool Real)
         }
     }
 
+    m_target->UpdateSpeed(MOVE_WALK, true);
     m_target->UpdateSpeed(MOVE_RUN, true);
     m_target->UpdateSpeed(MOVE_SWIM, true);
     m_target->UpdateSpeed(MOVE_FLIGHT, true);
@@ -4721,6 +4722,7 @@ void Aura::HandleAuraModUseNormalSpeed(bool /*apply*/, bool Real)
     if(!Real)
         return;
 
+    m_target->UpdateSpeed(MOVE_WALK, true);
     m_target->UpdateSpeed(MOVE_RUN, true);
     m_target->UpdateSpeed(MOVE_SWIM, true);
     m_target->UpdateSpeed(MOVE_FLIGHT, true);
@@ -5207,8 +5209,8 @@ void Aura::HandlePeriodicDamage(bool apply, bool Real)
                 // Lacerate
                 if (m_spellProto->SpellFamilyFlags & UI64LIT(0x000000010000000000))
                 {
-                    // $AP*0.05/5 bonus per tick
-                    m_modifier.m_amount += int32(caster->GetTotalAttackPowerValue(BASE_ATTACK) / 100);
+                    // $AP*0.05 bonus per tick
+                    m_modifier.m_amount += int32(caster->GetTotalAttackPowerValue(BASE_ATTACK) * 5 / 100);
                     return;
                 }
                 // Rip
@@ -6425,6 +6427,14 @@ void Aura::HandleShapeshiftBoosts(bool apply)
         if(MasterShaperSpellId)
             m_target->RemoveAurasDueToSpell(MasterShaperSpellId);
 
+        if(m_target->GetTypeId() == TYPEID_PLAYER)
+        {
+            if(spellId1)
+                ((Player*)m_target)->RemoveSpellCooldown(spellId1, true);
+            if(spellId2)
+                ((Player*)m_target)->RemoveSpellCooldown(spellId2, true);
+        }
+
         Unit::AuraMap& tAuras = m_target->GetAuras();
         for (Unit::AuraMap::iterator itr = tAuras.begin(); itr != tAuras.end();)
         {
@@ -6611,6 +6621,22 @@ void Aura::HandleSpellSpecificBoosts(bool apply, bool last_stack)
                         return;
                 }
                 cast_on_stack = true;
+            }
+            // Health Funnel
+            else if (m_spellProto->SpellFamilyFlags & 0x01000000)
+            {
+                Unit* caster = GetCaster();
+                if(!caster)
+                    return;
+                // Improved Health Funnel
+                // rank 1
+                if(caster->HasAura(18703))
+                    spellId1 = 60955;
+                // rank 2
+                else if(caster->HasAura(18704))
+                    spellId1 = 60956;
+                else
+                    return;
             }
             else
                 return;
